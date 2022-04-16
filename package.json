@@ -9,13 +9,19 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/react": "^1.8.8",
+    "@emotion/react": "^11.9.0",
+    "@emotion/styled": "^11.8.1",
     "@solana/web3.js": "^1.37.1",
     "autoprefixer": "^10.4.4",
     "bs58": "^5.0.0",
+    "framer-motion": "^6.3.0",
+    "grommet": "^2.22.0",
     "next": "12.1.4",
     "postcss": "^8.4.12",
     "react": "18.0.0",
     "react-dom": "18.0.0",
+    "styled-components": "^5.3.5",
     "tailwindcss": "^3.0.23"
   },
   "devDependencies": {

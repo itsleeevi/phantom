@@ -1,108 +1,98 @@
-import Head from "next/head";
-import Image from "next/image";
-import styles from "../styles/Home.module.css";
 import * as web3 from "@solana/web3.js";
 import React, { useEffect, useState } from "react";
-import base58 from "bs58";
-/*
-// Set our network to devent.
-const network = clusterApiUrl("devnet");
-*/
+
+import { Button, Box, Heading } from "grommet";
+import { ChakraProvider } from "@chakra-ui/react";
+import {
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+} from "@chakra-ui/react";
 
 export default function Home() {
   const [connected, setConnected] = useState(false);
-  const [provider, setProvider] = useState(window.solana);
   const [connection, setConnection] = useState(undefined);
-  const [walletAddress, setWalletAddress] = useState(undefined);
   const recieverWallet = "C3EteStFtwBxZC7NjmFXWt2EaZTgWrxkn3eWDLeALzW3";
+  const [amount, setAmount] = useState(0.1);
+  const parse = (val) => val.replace(/^\$/, "");
 
-  const connectWallet = async () => {
+  const connectPhantom = async () => {
     const { solana } = window;
 
     if (solana) {
-      const response = await solana.connect();
-      setWalletAddress(response.publicKey.toString());
+      await solana.connect();
       setConnected(true);
-    }
-  };
-
-  const getProvider = async () => {
-    if ("solana" in window) {
-      const provider = window.solana;
-      if (provider.isPhantom) {
-        console.log("Is Phantom installed?  ", provider.isPhantom);
-        return provider;
-      }
-    } else {
-      window.open("https://www.phantom.app/", "_blank");
     }
   };
 
   useEffect(() => {
     const init = async () => {
-      const provider = await getProvider();
       const connection = new web3.Connection(web3.clusterApiUrl("devnet"));
-
-      setProvider(provider);
       setConnection(connection);
     };
     init();
   }, []);
 
-  async function sendTransaction() {
-    // I have hardcoded my secondary wallet address here. You can take this address either from user input or your DB or wherever
-    var recieverWallet = new web3.PublicKey(
-      "9fuYBoRvgptU4fVZ8ZqvWTTc6oC68P4tjuSA2ySzn6Nv"
-    );
+  const transferSol = async () => {
+    const transaction = new web3.Transaction();
 
-    var transaction = new web3.Transaction().add(
-      web3.SystemProgram.transfer({
-        fromPubkey: walletAddress,
-        toPubkey: recieverWallet,
-        lamports: 10000, //Investing 1 SOL. Remember 1 Lamport = 10^-9 SOL.
-      })
-    );
+    const toPubkey = new web3.PublicKey(recieverWallet);
 
-    transaction.feePayer = await window.solana.publicKey;
-    let { blockhash } = await connection.getRecentBlockhash();
-    transaction.recentBlockhash = blockhash;
-
-    const signed = await provider.request({
-      method: "signTransaction",
-      params: {
-        message: base58.encode(transaction.serializeMessage()),
-      },
+    const instruction = web3.SystemProgram.transfer({
+      fromPubkey: window.solana.publicKey,
+      toPubkey: toPubkey,
+      lamports: amount * 1000000000,
     });
-    const signature = base58.decode(signed.signature);
-    transaction.addSignature(initializerKey, signature);
-    transaction.partialSign(...[tempTokenAccount]);
 
-    await connection.sendRawTransaction(transaction.serialize());
-  }
+    transaction.add(instruction);
+    transaction.feePayer = window.solana.publicKey;
+    transaction.recentBlockhash = (
+      await connection.getRecentBlockhash()
+    ).blockhash;
+
+    let signed = await window.solana.signTransaction(transaction);
+    let signature = await connection.sendRawTransaction(signed.serialize());
+    await connection.confirmTransaction(signature);
+  };
 
   return (
     <div className="flex justify-center items-center h-screen">
-      {connected ? (
-        <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          onClick={(e) => {
-            e.preventDefault();
-            sendTransaction();
-          }}
-        >
-          Transfer
-        </button>
-      ) : (
-        <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          onClick={(e) => {
-            e.preventDefault();
-            connectWallet();
-          }}
-        >
-          Connect
-        </button>
-      )}
+      <ChakraProvider>
+        {!connected ? (
+          <Button
+            primary
+            label="Connect Wallet"
+            onClick={() => connectPhantom()}
+          />
+        ) : (
+          <Box direction="column" width="medium" justify="center" gap="small">
+            <NumberInput
+              defaultValue={0.1}
+              min={0.1}
+              precision={1}
+              step={0.1}
+              onChange={(valueString) => setAmount(parse(valueString))}
+              value={amount}
+            >
+              <NumberInputField />
+              <NumberInputStepper>
+                <NumberIncrementStepper />
+                <NumberDecrementStepper />
+              </NumberInputStepper>
+            </NumberInput>
+            <Box
+              border={{ color: "black", size: "large" }}
+              pad="medium"
+              align="center"
+            >
+              <Heading>{amount}</Heading>
+            </Box>
+            <Button primary label="Transfer" onClick={() => transferSol()} />
+          </Box>
+        )}
+      </ChakraProvider>
     </div>
   );
 }
